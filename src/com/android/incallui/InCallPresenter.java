@@ -64,6 +64,7 @@ public class InCallPresenter implements CallList.Listener {
     private InCallActivity mInCallActivity;
     private InCallCardActivity mInCallCardActivity;
     private InCallState mInCallState = InCallState.NO_CALLS;
+    private AccelerometerListener mAccelerometerListener;
     private ProximitySensor mProximitySensor;
     private boolean mServiceConnected = false;
     private static String LOG_TAG = "InCallPresenter";
@@ -139,6 +140,8 @@ public class InCallPresenter implements CallList.Listener {
 
         mProximitySensor = new ProximitySensor(context, mAudioModeProvider);
         addListener(mProximitySensor);
+
+        mAccelerometerListener = new AccelerometerListener(context);
 
         mCallList = callList;
 
@@ -350,6 +353,9 @@ public class InCallPresenter implements CallList.Listener {
         // Renable notification shade and soft navigation buttons, if we are no longer in the
         // incoming call screen
         if (!newState.isIncoming()) {
+            if (mAccelerometerListener != null) {
+                mAccelerometerListener.enableSensor(false);
+            }
             CallCommandClient.getInstance().setSystemBarNavigationEnabled(true);
         }
 
@@ -394,6 +400,9 @@ public class InCallPresenter implements CallList.Listener {
         // Disable notification shade and soft navigation buttons
         if (newState.isIncoming()) {
             CallCommandClient.getInstance().setSystemBarNavigationEnabled(false);
+            if (mAccelerometerListener != null) {
+                mAccelerometerListener.enableSensor(true);
+            }
         }
 
         for (IncomingCallListener listener : mIncomingCallListeners) {
@@ -584,6 +593,9 @@ public class InCallPresenter implements CallList.Listener {
         // (1) Attempt to answer a call
         if (incomingCall != null) {
             CallCommandClient.getInstance().answerCall(incomingCall.getCallId());
+            if (mAccelerometerListener != null) {
+                mAccelerometerListener.enableSensor(false);
+            }
             return true;
         }
 
@@ -827,6 +839,8 @@ public class InCallPresenter implements CallList.Listener {
                 mProximitySensor.tearDown();
             }
             mProximitySensor = null;
+
+            mAccelerometerListener = null;
 
             mAudioModeProvider = null;
 
