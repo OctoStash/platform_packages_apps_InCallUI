@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +28,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
@@ -31,6 +36,7 @@ import android.widget.PopupMenu.OnDismissListener;
 import android.widget.PopupMenu.OnMenuItemClickListener;
 import android.widget.ToggleButton;
 
+import com.android.internal.telephony.util.BlacklistUtils;
 import com.android.services.telephony.common.AudioMode;
 
 /**
@@ -48,6 +54,8 @@ public class CallButtonFragment
     private ImageButton mMergeButton;
     private ImageButton mAddCallButton;
     private ImageButton mSwapButton;
+    private ImageButton mBlacklistButton;
+    private ImageButton mAddParticipantButton;
 
     private PopupMenu mAudioModePopup;
     private boolean mAudioModePopupVisible;
@@ -55,6 +63,8 @@ public class CallButtonFragment
     private View mExtraRowButton;
     private View mManageConferenceButton;
     private View mGenericMergeButton;
+
+    private Button mModifyCallButton;
 
     @Override
     CallButtonPresenter createPresenter() {
@@ -141,6 +151,20 @@ public class CallButtonFragment
         mMergeButton.setOnClickListener(this);
         mSwapButton = (ImageButton) parent.findViewById(R.id.swapButton);
         mSwapButton.setOnClickListener(this);
+        mAddParticipantButton = (ImageButton) parent.findViewById(R.id.addParticipant);
+        mAddParticipantButton.setOnClickListener(this);
+
+        // "Add to black list" button
+        mBlacklistButton = (ImageButton) parent.findViewById(R.id.addBlacklistButton);
+        if (BlacklistUtils.isBlacklistEnabled(getActivity())) {
+            mBlacklistButton.setVisibility(View.VISIBLE);
+            mBlacklistButton.setOnClickListener(this);
+        } else {
+            mBlacklistButton.setVisibility(View.GONE);
+        }
+
+        mModifyCallButton = (Button) parent.findViewById(R.id.modifyCallButton);
+        mModifyCallButton.setOnClickListener(this);
 
         return parent;
     }
@@ -183,6 +207,15 @@ public class CallButtonFragment
             case R.id.dialpadButton:
                 getPresenter().showDialpadClicked(mShowDialpadButton.isChecked());
                 break;
+            case R.id.addBlacklistButton:
+                getPresenter().blacklistClicked(getActivity());
+                break;
+            case R.id.addParticipant:
+                getPresenter().addParticipantClicked();
+                break;
+            case R.id.modifyCallButton:
+                getPresenter().modifyCallButtonClicked();
+                break;
             default:
                 Log.wtf(this, "onClick: unexpected");
                 break;
@@ -190,11 +223,8 @@ public class CallButtonFragment
     }
 
     @Override
-    public void setEnabled(boolean isEnabled) {
-        View view = getView();
-        if (view.getVisibility() != View.VISIBLE) {
-            view.setVisibility(View.VISIBLE);
-        }
+    public void setEnabled(boolean isEnabled, boolean isVisible) {
+        getView().setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
 
         // The main end-call button spanning across the screen.
         mEndCallButton.setEnabled(isEnabled);
@@ -207,6 +237,8 @@ public class CallButtonFragment
         mMergeButton.setEnabled(isEnabled);
         mAddCallButton.setEnabled(isEnabled);
         mSwapButton.setEnabled(isEnabled);
+        mBlacklistButton.setEnabled(isEnabled);
+        mAddParticipantButton.setEnabled(isEnabled);
     }
 
     @Override
@@ -254,6 +286,10 @@ public class CallButtonFragment
         mAddCallButton.setEnabled(enabled);
     }
 
+    public void enableAddParticipant(boolean show) {
+        mAddParticipantButton.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
     @Override
     public void setAudio(int mode) {
         updateAudioButtons(getPresenter().getSupportedAudio());
@@ -296,6 +332,23 @@ public class CallButtonFragment
         getPresenter().setAudioMode(mode);
 
         return true;
+    }
+
+    @Override
+    public void displayModifyCallOptions(int callId) {
+        if (getActivity() != null && getActivity() instanceof InCallActivity) {
+            ((InCallActivity) getActivity()).displayModifyCallOptions(callId);
+        }
+    }
+
+    @Override
+    public void enableModifyCall(boolean enabled) {
+        mModifyCallButton.setEnabled(enabled);
+    }
+
+    @Override
+    public void showModifyCall(boolean show) {
+        mModifyCallButton.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     // PopupMenu.OnDismissListener implementation; see showAudioModePopup().
